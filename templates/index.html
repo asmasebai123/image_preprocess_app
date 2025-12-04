@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ImageLab Pro - Plateforme de Prétraitement d'Images</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <i class="fas fa-sliders-h logo-icon"></i>
+                <span class="logo-text">ImageLab Pro</span>
+            </div>
+            <div class="header-actions">
+                <button class="theme-toggle">
+                    <i class="fas fa-moon"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="nav-item active" data-section="adjustments">
+                <i class="fas fa-sliders-h nav-icon"></i>
+                <span class="nav-label">Ajustements</span>
+            </div>
+            <div class="nav-item" data-section="filters">
+                <i class="fas fa-filter nav-icon"></i>
+                <span class="nav-label">Filtres</span>
+            </div>
+            <div class="nav-item" data-section="transform">
+                <i class="fas fa-crop-alt nav-icon"></i>
+                <span class="nav-label">Transformations</span>
+            </div>
+            <div class="nav-item" data-section="threshold">
+                <i class="fas fa-border-all nav-icon"></i>
+                <span class="nav-label">Seuillage</span>
+            </div>
+            <div class="nav-item" data-section="channels">
+                <i class="fas fa-object-group nav-icon"></i>
+                <span class="nav-label">Canaux</span>
+            </div>
+            <div class="nav-item" data-section="detection">
+                <i class="fas fa-draw-polygon nav-icon"></i>
+                <span class="nav-label">Détection contours</span>
+            </div>
+            <div class="nav-item" data-section="histogram">
+                <i class="fas fa-chart-bar nav-icon"></i>
+                <span class="nav-label">Histogramme</span>
+            </div>
+            <div class="nav-item" data-section="export">
+                <i class="fas fa-download nav-icon"></i>
+                <span class="nav-label">Exporter</span>
+            </div>
+        </nav>
+
+        <!-- Zone principale -->
+        <main class="main-content">
+            <div class="image-preview-container">
+                <img id="preview-image" class="image-preview" src="" alt="Aperçu de l'image">
+                <div class="placeholder-content" id="placeholder">
+                    <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                    <h2 class="placeholder-text">Glissez-déposez une image ou importez depuis votre appareil</h2>
+                    <button class="upload-btn" id="upload-trigger">
+                        <i class="fas fa-folder-open"></i> Importer une image
+                    </button>
+                    <input type="file" id="file-input" accept="image/*" style="display: none;">
+                </div>
+                <div class="image-overlay">
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" id="zoom-in"><i class="fas fa-search-plus"></i></button>
+                        <button class="zoom-btn" id="zoom-out"><i class="fas fa-search-minus"></i></button>
+                        <button class="zoom-btn" id="zoom-reset"><i class="fas fa-expand-arrows-alt"></i></button>
+                    </div>
+                    <div class="image-info-overlay">
+                        <span id="image-dimensions">-</span>
+                        <span id="image-size">-</span>
+                    </div>
+                </div>
+            </div>
+            <div class="image-controls">
+                <button class="control-btn" id="undo-btn">
+                    <i class="fas fa-undo"></i> Annuler
+                </button>
+                <button class="control-btn" id="redo-btn">
+                    <i class="fas fa-redo"></i> Rétablir
+                </button>
+                <button class="control-btn" id="reset-btn">
+                    <i class="fas fa-sync-alt"></i> Réinitialiser
+                </button>
+                <button class="control-btn" id="compare-btn">
+                    <i class="fas fa-eye"></i> Comparer
+                </button>
+                <button class="control-btn" id="save-btn">
+                    <i class="fas fa-save"></i> Sauvegarder
+                </button>
+            </div>
+        </main>
+
+        <!-- Panneau droit -->
+        <aside class="right-panel">
+            <!-- Section des ajustements de base -->
+            <div class="panel-section active" id="adjustments-section">
+                <h3 class="section-title">
+                    <i class="fas fa-sliders-h section-icon"></i> Ajustements de base
+                </h3>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Luminosité</span>
+                        <span class="slider-value">0</span>
+                    </div>
+                    <input type="range" min="-100" max="100" value="0" class="slider" id="brightness-slider">
+                </div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Contraste</span>
+                        <span class="slider-value">0</span>
+                    </div>
+                    <input type="range" min="-100" max="100" value="0" class="slider" id="contrast-slider">
+                </div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Teinte</span>
+                        <span class="slider-value">0</span>
+                    </div>
+                    <input type="range" min="-180" max="180" value="0" class="slider" id="hue-slider">
+                </div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Niveaux de gris</span>
+                        <span class="slider-value">0%</span>
+                    </div>
+                    <input type="range" min="0" max="100" value="0" class="slider" id="grayscale-slider">
+                </div>
+            </div>
+
+            <!-- Section des filtres -->
+            <div class="panel-section" id="filters-section">
+                <h3 class="section-title">
+                    <i class="fas fa-filter section-icon"></i> Filtres
+                </h3>
+                <div class="filters-grid">
+                    <div class="filter-card" data-filter="gaussian">
+                        <div class="filter-preview gaussian"></div>
+                        <span class="filter-name">Gaussien</span>
+                    </div>
+                    <div class="filter-card" data-filter="average">
+                        <div class="filter-preview average"></div>
+                        <span class="filter-name">Average</span>
+                    </div>
+                    <div class="filter-card" data-filter="median">
+                        <div class="filter-preview median"></div>
+                        <span class="filter-name">Médiane</span>
+                    </div>
+                    <div class="filter-card" data-filter="bilateral">
+                        <div class="filter-preview bilateral"></div>
+                        <span class="filter-name">Bilateral</span>
+                    </div>
+                    <div class="filter-card" data-filter="motion">
+                        <div class="filter-preview motion"></div>
+                        <span class="filter-name">Motion Blur</span>
+                    </div>
+                    <div class="filter-card" data-filter="sharpen">
+                        <div class="filter-preview sharpen"></div>
+                        <span class="filter-name">Accentuation</span>
+                    </div>
+                </div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Intensité du filtre</span>
+                        <span class="slider-value">3</span>
+                    </div>
+                    <input type="range" min="1" max="10" value="3" class="slider" id="filter-intensity-slider">
+                </div>
+            </div>
+
+            <!-- Section des transformations -->
+            <div class="panel-section" id="transform-section">
+                <h3 class="section-title">
+                    <i class="fas fa-crop-alt section-icon"></i> Transformations
+                </h3>
+                <div class="transform-controls">
+                    <button class="transform-btn" id="rotate-left">
+                        <i class="fas fa-undo"></i> -90°
+                    </button>
+                    <button class="transform-btn" id="rotate-right">
+                        <i class="fas fa-redo"></i> +90°
+                    </button>
+                    <button class="transform-btn" id="flip-horizontal">
+                        <i class="fas fa-arrows-alt-h"></i> Miroir H
+                    </button>
+                    <button class="transform-btn" id="flip-vertical">
+                        <i class="fas fa-arrows-alt-v"></i> Miroir V
+                    </button>
+                </div>
+                <div class="custom-rotation">
+                    <div class="rotation-input-group">
+                        <input type="number" id="rotation-angle" class="rotation-input" placeholder="Angle en degrés" min="-360" max="360">
+                        <button class="rotation-btn" id="apply-rotation">
+                            <i class="fas fa-sync-alt"></i> Appliquer
+                        </button>
+                    </div>
+                </div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Redimensionnement</span>
+                        <span class="slider-value">100%</span>
+                    </div>
+                    <input type="range" min="10" max="200" value="100" class="slider" id="resize-slider">
+                </div>
+            </div>
+
+            <!-- Section du seuillage -->
+            <div class="panel-section" id="threshold-section">
+                <h3 class="section-title">
+                    <i class="fas fa-border-all section-icon"></i> Seuillage
+                </h3>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Seuil</span>
+                        <span class="slider-value">128</span>
+                    </div>
+                    <input type="range" min="0" max="255" value="128" class="slider" id="threshold-slider">
+                </div>
+                <div class="threshold-types">
+                    <button class="threshold-btn active" data-type="binary">Binaire</button>
+                    <button class="threshold-btn" data-type="adaptive">Adaptatif</button>
+                    <button class="threshold-btn" data-type="otsu">Otsu</button>
+                </div>
+            </div>
+
+            <!-- Section de séparation des canaux -->
+            <div class="panel-section" id="channels-section">
+                <h3 class="section-title">
+                    <i class="fas fa-object-group section-icon"></i> Séparation des canaux
+                </h3>
+                <div class="channels-controls">
+                    <button class="channel-btn" id="channel-r">
+                        <i class="fas fa-square" style="color: #ff6b6b;"></i> Canal Rouge
+                    </button>
+                    <button class="channel-btn" id="channel-g">
+                        <i class="fas fa-square" style="color: #51cf66;"></i> Canal Vert
+                    </button>
+                    <button class="channel-btn" id="channel-b">
+                        <i class="fas fa-square" style="color: #339af0;"></i> Canal Bleu
+                    </button>
+                    <button class="channel-btn" id="channel-all">
+                        <i class="fas fa-th"></i> Tous les canaux
+                    </button>
+                </div>
+            </div>
+
+            <!-- Section de détection de contours -->
+            <div class="panel-section" id="detection-section">
+                <h3 class="section-title">
+                    <i class="fas fa-draw-polygon section-icon"></i> Détection de contours
+                </h3>
+                <div class="detection-controls">
+                    <button class="detection-btn active" data-detector="canny">Canny</button>
+                    <button class="detection-btn" data-detector="sobel">Sobel</button>
+                    <button class="detection-btn" data-detector="laplacian">Laplacien</button>
+                </div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Seuil bas</span>
+                        <span class="slider-value">50</span>
+                    </div>
+                    <input type="range" min="0" max="255" value="50" class="slider" id="low-threshold-slider">
+                </div>
+                <div class="slider-container">
+                    <div class="slider-label">
+                        <span>Seuil haut</span>
+                        <span class="slider-value">150</span>
+                    </div>
+                    <input type="range" min="0" max="255" value="150" class="slider" id="high-threshold-slider">
+                </div>
+            </div>
+
+            <!-- Section de l'histogramme -->
+            <div class="panel-section" id="histogram-section">
+                <h3 class="section-title">
+                    <i class="fas fa-chart-bar section-icon"></i> Histogramme
+                </h3>
+                <div class="histogram-controls">
+                    <button class="histogram-btn active" data-channel="rgb">RGB</button>
+                    <button class="histogram-btn" data-channel="red">Rouge</button>
+                    <button class="histogram-btn" data-channel="green">Vert</button>
+                    <button class="histogram-btn" data-channel="blue">Bleu</button>
+                    <button class="histogram-btn" data-channel="equalize">Égaliser</button>
+                </div>
+                <div class="histogram-canvas-container" id="histogram-container">
+                    <canvas id="histogram-canvas"></canvas>
+                    <div class="histogram-overlay">
+                        <span>Survolez pour agrandir</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section d'exportation -->
+            <div class="panel-section" id="export-section">
+                <h3 class="section-title">
+                    <i class="fas fa-download section-icon"></i> Exportation
+                </h3>
+                <div class="export-controls">
+                    <button class="export-btn" id="export-png">
+                        <i class="fas fa-file-image"></i> PNG
+                    </button>
+                    <button class="export-btn" id="export-jpg">
+                        <i class="fas fa-file-image"></i> JPG
+                    </button>
+                    <button class="export-btn" id="export-tiff">
+                        <i class="fas fa-file-image"></i> TIFF
+                    </button>
+                </div>
+                <div class="quality-control">
+                    <div class="slider-label">
+                        <span>Qualité</span>
+                        <span class="slider-value">95%</span>
+                    </div>
+                    <input type="range" min="1" max="100" value="95" class="slider" id="quality-slider">
+                </div>
+            </div>
+
+            <!-- Miniature de l'image originale -->
+            <div class="original-image-preview">
+                <h4 class="original-title">Image Originale</h4>
+                <div class="original-container">
+                    <img id="original-preview" src="" alt="Image originale" style="display: none;">
+                    <div class="original-placeholder" id="original-placeholder">
+                        <i class="fas fa-image"></i>
+                        <span>Aucune image</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Footer -->
+        <footer>
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span id="status-text">Prêt à traiter</span>
+            </div>
+            <div class="app-version">
+                <span>ImageLab Pro v1.0</span>
+            </div>
+        </footer>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
