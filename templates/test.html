@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test API ImageLab</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { margin: 5px; padding: 10px; }
+        #result { margin-top: 20px; padding: 10px; background: #f0f0f0; }
+        #test-image { max-width: 300px; margin-top: 10px; border: 1px solid #ccc; }
+    </style>
+</head>
+<body>
+    <h1>Test API ImageLab Pro</h1>
+    
+    <h2>1. Test d'upload</h2>
+    <input type="file" id="test-file" accept="image/*">
+    <button onclick="testUpload()">Tester Upload</button>
+    
+    <h2>2. Test des traitements</h2>
+    <button onclick="testGrayscale()">Grayscale</button>
+    <button onclick="testBlur()">Flou Gaussien</button>
+    <button onclick="testBrightness()">Luminosité +30</button>
+    <button onclick="testContrast()">Contraste +30</button>
+    <button onclick="testRotate()">Rotation 90°</button>
+    
+    <h2>3. Test de téléchargement</h2>
+    <button onclick="testDownload()">Télécharger</button>
+    
+    <h2>4. Résultats</h2>
+    <div id="result">Cliquez sur un bouton pour tester...</div>
+    <img id="test-image">
+    
+    <script>
+    let currentImage = null;
+    const API_BASE = window.location.origin; // Utilise l'origine actuelle (localhost:5000)
+    
+    async function testAPI(endpoint, method='POST', data=null) {
+        const options = { method };
+        
+        if (data) {
+            if (data instanceof FormData) {
+                options.body = data;
+            } else {
+                options.headers = {'Content-Type': 'application/json'};
+                options.body = JSON.stringify(data);
+            }
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE}${endpoint}`, options);
+            const result = await response.json();
+            return { ok: response.ok, result };
+        } catch (error) {
+            return { ok: false, error: error.message };
+        }
+    }
+    
+    async function testUpload() {
+        const fileInput = document.getElementById('test-file');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert('Choisissez une image d\'abord');
+            return;
+        }
+        
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        const { ok, result, error } = await testAPI('/api/upload', 'POST', formData);
+        
+        if (ok && result.success) {
+            currentImage = result.image;
+            document.getElementById('test-image').src = result.image;
+            document.getElementById('result').innerHTML = 
+                `<strong>✓ Upload réussi!</strong><br>Dimensions: ${result.dimensions}`;
+        } else {
+            document.getElementById('result').innerHTML = 
+                `<strong>✗ Erreur:</strong> ${error || result.error}`;
+        }
+    }
+    
+    async function testGrayscale() {
+        if (!currentImage) {
+            alert('Uploader une image d\'abord');
+            return;
+        }
+        
+        const { ok, result, error } = await testAPI('/api/process', 'POST', {
+            operation: 'grayscale',
+            image: currentImage
+        });
+        
+        handleProcessResult(ok, result, error);
+    }
+    
+    async function testBlur() {
+        if (!currentImage) {
+            alert('Uploader une image d\'abord');
+            return;
+        }
+        
+        const { ok, result, error } = await testAPI('/api/process', 'POST', {
+            operation: 'blur',
+            image: currentImage,
+            params: { method: 'gaussian', kernel_size: 5 }
+        });
+        
+        handleProcessResult(ok, result, error);
+    }
+    
+    async function testBrightness() {
+        if (!currentImage) {
+            alert('Uploader une image d\'abord');
+            return;
+        }
+        
+        const { ok, result, error } = await testAPI('/api/process', 'POST', {
+            operation: 'brightness',
+            image: currentImage,
+            params: { value: 30 }
+        });
+        
+        handleProcessResult(ok, result, error);
+    }
+    
+    async function testContrast() {
+        if (!currentImage) {
+            alert('Uploader une image d\'abord');
+            return;
+        }
+        
+        const { ok, result, error } = await testAPI('/api/process', 'POST', {
+            operation: 'contrast',
+            image: currentImage,
+            params: { value: 30 }
+        });
+        
+        handleProcessResult(ok, result, error);
+    }
+    
+    async function testRotate() {
+        if (!currentImage) {
+            alert('Uploader une image d\'abord');
+            return;
+        }
+        
+        const { ok, result, error } = await testAPI('/api/process', 'POST', {
+            operation: 'rotate',
+            image: currentImage,
+            params: { angle: 90 }
+        });
+        
+        handleProcessResult(ok, result, error);
+    }
+    
+    async function testDownload() {
+        if (!currentImage) {
+            alert('Uploader une image d\'abord');
+            return;
+        }
+        
+        const { ok, result, error } = await testAPI('/api/download', 'POST', {
+            image: currentImage,
+            format: 'png'
+        });
+        
+        if (ok) {
+            // Pour le téléchargement, on ne peut pas utiliser fetch de la même façon
+            // On va créer un lien direct
+            const link = document.createElement('a');
+            link.href = currentImage;
+            link.download = 'image_traitee.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            document.getElementById('result').innerHTML = 
+                '<strong>✓ Téléchargement lancé!</strong>';
+        } else {
+            document.getElementById('result').innerHTML = 
+                `<strong>✗ Erreur:</strong> ${error || result.error}`;
+        }
+    }
+    
+    function handleProcessResult(ok, result, error) {
+        if (ok && result.success) {
+            currentImage = result.image;
+            document.getElementById('test-image').src = result.image;
+            document.getElementById('result').innerHTML = 
+                '<strong>✓ Traitement réussi!</strong>';
+        } else {
+            document.getElementById('result').innerHTML = 
+                `<strong>✗ Erreur:</strong> ${error || result.error}`;
+        }
+    }
+    
+    // Test de connexion au démarrage
+    window.onload = async () => {
+        const { ok, result } = await testAPI('/api/health', 'GET');
+        if (ok) {
+            document.getElementById('result').innerHTML = 
+                `<strong>✓ Serveur connecté!</strong><br>Modules: ${result.modules_loaded ? 'Chargés' : 'Manquants'}`;
+        } else {
+            document.getElementById('result').innerHTML = 
+                '<strong>✗ Serveur non disponible!</strong><br>Vérifiez que python app.py est en cours d\'exécution.';
+        }
+    };
+    </script>
+</body>
+</html>

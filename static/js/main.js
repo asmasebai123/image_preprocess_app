@@ -1,38 +1,63 @@
 // État de l'application
-const appState = {
-    currentImage: null,
-    originalImage: null,
+let appState = {
+    currentImageData: null,
+    originalImageData: null,
+    history: [],
+    historyIndex: -1,
+    processing: false,
     zoomLevel: 1,
-    isComparing: false,
-    activeFilters: new Set(),
-    currentChannel: 'rgb'
+    isComparing: false
 };
 
 // Initialisation
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 ImageLab Pro - Initialisation');
     initializeApp();
 });
 
 function initializeApp() {
-    // Initialiser les écouteurs d'événements
-    initializeEventListeners();
+    // Test de connexion
+    checkServer();
     
-    // Afficher la section par défaut
+    // Événements de base
+    setupBasicEvents();
+    
+    // Sliders
+    setupSliders();
+    
+    // Afficher section par défaut
     showSection('adjustments');
     
-    // Initialiser l'histogramme
-    updateHistogram();
+    console.log('✓ Application initialisée');
 }
 
-function initializeEventListeners() {
-    // Upload d'image
-    document.getElementById('upload-trigger').addEventListener('click', () => {
-        document.getElementById('file-input').click();
-    });
+async function checkServer() {
+    try {
+        const response = await fetch('/api/health');
+        const data = await response.json();
+        if (data.status === 'ok') {
+            setStatus('✅ Prêt à traiter');
+        }
+    } catch (error) {
+        setStatus('❌ Serveur non disponible', 'error');
+        console.error('Serveur:', error);
+    }
+}
+
+function setupBasicEvents() {
+    // Upload
+    const uploadBtn = document.getElementById('upload-trigger');
+    const fileInput = document.getElementById('file-input');
     
-    document.getElementById('file-input').addEventListener('change', handleImageUpload);
+    if (uploadBtn) {
+        uploadBtn.addEventListener('click', () => fileInput.click());
+    }
     
-    // Navigation sidebar
+    if (fileInput) {
+        fileInput.addEventListener('change', handleImageUpload);
+    }
+    
+    // Navigation
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', function() {
             const section = this.getAttribute('data-section');
@@ -40,126 +65,324 @@ function initializeEventListeners() {
         });
     });
     
-    // Contrôles d'image
-    document.getElementById('undo-btn').addEventListener('click', undoModification);
-    document.getElementById('redo-btn').addEventListener('click', redoModification);
-    document.getElementById('reset-btn').addEventListener('click', resetImage);
-    document.getElementById('compare-btn').addEventListener('click', toggleCompare);
-    document.getElementById('save-btn').addEventListener('click', saveImage);
+    // Boutons de contrôle
+    setupButton('undo-btn', undoModification);
+    setupButton('redo-btn', redoModification);
+    setupButton('reset-btn', resetImage);
+    setupButton('compare-btn', toggleCompare);
+    setupButton('save-btn', saveImage);
     
-    // Contrôles de zoom
-    document.getElementById('zoom-in').addEventListener('click', () => adjustZoom(0.1));
-    document.getElementById('zoom-out').addEventListener('click', () => adjustZoom(-0.1));
-    document.getElementById('zoom-reset').addEventListener('click', resetZoom);
-    
-    // Rotation personnalisée
-    document.getElementById('apply-rotation').addEventListener('click', applyCustomRotation);
+    // Zoom
+    setupButton('zoom-in', () => adjustZoom(0.1));
+    setupButton('zoom-out', () => adjustZoom(-0.1));
+    setupButton('zoom-reset', resetZoom);
     
     // Filtres
     document.querySelectorAll('.filter-card').forEach(card => {
         card.addEventListener('click', function() {
             const filter = this.getAttribute('data-filter');
-            toggleFilter(filter);
+            applyFilter(filter);
         });
     });
     
     // Transformations
-    document.getElementById('rotate-left').addEventListener('click', () => rotateImage(-90));
-    document.getElementById('rotate-right').addEventListener('click', () => rotateImage(90));
-    document.getElementById('flip-horizontal').addEventListener('click', () => flipImage('horizontal'));
-    document.getElementById('flip-vertical').addEventListener('click', () => flipImage('vertical'));
+    setupButton('rotate-left', () => applyRotation(-90));
+    setupButton('rotate-right', () => applyRotation(90));
+    setupButton('flip-horizontal', () => applyFlip('horizontal'));
+    setupButton('flip-vertical', () => applyFlip('vertical'));
     
-    // Séparation des canaux
-    document.getElementById('channel-r').addEventListener('click', () => applyChannelSeparation('red'));
-    document.getElementById('channel-g').addEventListener('click', () => applyChannelSeparation('green'));
-    document.getElementById('channel-b').addEventListener('click', () => applyChannelSeparation('blue'));
-    document.getElementById('channel-all').addEventListener('click', () => applyChannelSeparation('all'));
+    // Rotation personnalisée
+    const applyRotationBtn = document.getElementById('apply-rotation');
+    if (applyRotationBtn) {
+        applyRotationBtn.addEventListener('click', applyCustomRotation);
+    }
     
-    // Histogramme
-    document.querySelectorAll('.histogram-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.histogram-btn').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            appState.currentChannel = this.getAttribute('data-channel');
-            updateHistogram();
+    // Thème
+    const themeToggle = document.querySelector('.theme-toggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', function() {
+            document.body.classList.toggle('light-theme');
+            const icon = this.querySelector('i');
+            icon.classList.toggle('fa-moon');
+            icon.classList.toggle('fa-sun');
         });
-    });
+    }
     
-    // Glisser-déposer
+    // Drag & drop
     setupDragAndDrop();
+    // Dans la fonction setupBasicEvents(), ajouter ceci :
+
+// Canaux RGB
+setupButton('channel-r', () => applyChannelSeparation('red'));
+setupButton('channel-g', () => applyChannelSeparation('green'));
+setupButton('channel-b', () => applyChannelSeparation('blue'));
+setupButton('channel-all', () => applyChannelSeparation('all'));
+
+// Boutons de seuillage
+document.querySelectorAll('.threshold-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const type = this.getAttribute('data-type');
+        applyThreshold(type);
+    });
+});
+
+// Boutons de détection de contours
+document.querySelectorAll('.detection-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const detector = this.getAttribute('data-detector');
+        applyEdgeDetection(detector);
+    });
+});
+
+// Boutons d'exportation
+setupButton('export-png', () => exportImage('png'));
+setupButton('export-jpg', () => exportImage('jpg'));
+setupButton('export-tiff', () => exportImage('tiff'));
 }
 
-function handleImageUpload(event) {
-    const file = event.target.files[0];
-    if (file && file.type.startsWith('image/')) {
-        loadImage(file);
+function setupButton(id, handler) {
+    const btn = document.getElementById(id);
+    if (btn) {
+        btn.addEventListener('click', handler);
     }
 }
 
-function loadImage(file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-            appState.currentImage = img;
-            appState.originalImage = img;
-            appState.zoomLevel = 1;
-            appState.activeFilters.clear();
-            
-            const previewImage = document.getElementById('preview-image');
-            const placeholder = document.getElementById('placeholder');
-            const originalPreview = document.getElementById('original-preview');
-            const originalPlaceholder = document.getElementById('original-placeholder');
-            
-            previewImage.src = e.target.result;
-            previewImage.style.display = 'block';
-            placeholder.style.display = 'none';
-            
-            // Mettre à jour la miniature de l'image originale
-            originalPreview.src = e.target.result;
-            originalPreview.style.display = 'block';
-            originalPlaceholder.style.display = 'none';
-            
-            updateImageInfo(file, img);
-            setStatus('Image chargée avec succès');
-            
-            // Mettre à jour l'histogramme
-            updateHistogram();
-        };
-        img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+function setupSliders() {
+    // Brightness
+    const brightnessSlider = document.getElementById('brightness-slider');
+    if (brightnessSlider) {
+        const brightnessValue = brightnessSlider.parentElement.querySelector('.slider-value');
+        brightnessSlider.addEventListener('input', function() {
+            brightnessValue.textContent = this.value;
+            applyBrightness(parseInt(this.value));
+        });
+    }
+    
+    // Contrast
+    const contrastSlider = document.getElementById('contrast-slider');
+    if (contrastSlider) {
+        const contrastValue = contrastSlider.parentElement.querySelector('.slider-value');
+        contrastSlider.addEventListener('input', function() {
+            contrastValue.textContent = this.value;
+            applyContrast(parseInt(this.value));
+        });
+    }
+    
+    // Grayscale
+    const grayscaleSlider = document.getElementById('grayscale-slider');
+    if (grayscaleSlider) {
+        const grayscaleValue = grayscaleSlider.parentElement.querySelector('.slider-value');
+        grayscaleSlider.addEventListener('input', function() {
+            grayscaleValue.textContent = `${this.value}%`;
+            if (this.value == 100) {
+                applyGrayscale();
+            } else if (appState.originalImageData) {
+                resetImage();
+            }
+        });
+    }
+    
+    // Resize
+    const resizeSlider = document.getElementById('resize-slider');
+    if (resizeSlider) {
+        const resizeValue = resizeSlider.parentElement.querySelector('.slider-value');
+        resizeSlider.addEventListener('input', function() {
+            resizeValue.textContent = `${this.value}%`;
+        });
+        resizeSlider.addEventListener('change', function() {
+            applyResize(parseInt(this.value));
+        });
+    }
+    
+    // Filter intensity
+    const filterSlider = document.getElementById('filter-intensity-slider');
+    if (filterSlider) {
+        const filterValue = filterSlider.parentElement.querySelector('.slider-value');
+        filterSlider.addEventListener('input', function() {
+            filterValue.textContent = this.value;
+        });
+    }
+    
+    // Threshold
+    const thresholdSlider = document.getElementById('threshold-slider');
+    if (thresholdSlider) {
+        const thresholdValue = thresholdSlider.parentElement.querySelector('.slider-value');
+        thresholdSlider.addEventListener('input', function() {
+            thresholdValue.textContent = this.value;
+            applyThreshold('binary', parseInt(this.value));
+        });
+    }
 }
 
-function updateImageInfo(file, img) {
-    document.getElementById('image-dimensions').textContent = `${img.width} × ${img.height} px`;
-    document.getElementById('image-size').textContent = `${(file.size / 1024).toFixed(1)} KB`;
+async function handleImageUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    console.log('📤 Upload:', file.name);
+    setStatus('Chargement...', 'processing');
+    showLoading(true);
+    
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    try {
+        const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const data = await response.json();
+        console.log('📥 Réponse:', data);
+        
+        if (data.success) {
+            await updateImageDisplay(data);
+            setStatus('✅ Image chargée');
+        } else {
+            setStatus(`❌ ${data.error}`, 'error');
+        }
+    } catch (error) {
+        console.error('❌ Upload error:', error);
+        setStatus('❌ Erreur de connexion', 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function updateImageDisplay(data) {
+    return new Promise((resolve) => {
+        appState.currentImageData = data.image;
+        appState.originalImageData = data.image;
+        appState.history = [data.image];
+        appState.historyIndex = 0;
+        
+        const previewImg = document.getElementById('preview-image');
+        const placeholder = document.getElementById('placeholder');
+        const originalImg = document.getElementById('original-preview');
+        const originalPlaceholder = document.getElementById('original-placeholder');
+        
+        // Préparer les images
+        const tempImg = new Image();
+        tempImg.onload = function() {
+            // Mettre à jour l'aperçu principal
+            previewImg.src = data.image;
+            previewImg.style.display = 'block';
+            if (placeholder) placeholder.style.display = 'none';
+            
+            // Mettre à jour l'original
+            if (originalImg) {
+                originalImg.src = data.image;
+                originalImg.style.display = 'block';
+            }
+            if (originalPlaceholder) originalPlaceholder.style.display = 'none';
+            
+            // Infos
+            document.getElementById('image-dimensions').textContent = data.dimensions || '-';
+            document.getElementById('image-size').textContent = data.size ? `${Math.round(data.size/1024)} KB` : '-';
+            
+            // Réinitialiser
+            appState.activeFilters = new Set();
+            resetFilterCards();
+            resetZoom();
+            
+            updateHistogram();
+            resolve();
+        };
+        
+        tempImg.onerror = function() {
+            console.error('❌ Erreur chargement image');
+            setStatus('❌ Erreur affichage', 'error');
+            resolve();
+        };
+        
+        tempImg.src = data.image;
+    });
+}
+
+function showLoading(show) {
+    const overlay = document.getElementById('loading-overlay');
+    if (overlay) {
+        overlay.style.display = show ? 'flex' : 'none';
+    }
+}
+
+async function processImage(operation, params = {}) {
+    if (!appState.currentImageData || appState.processing) return;
+    
+    appState.processing = true;
+    setStatus('Traitement...', 'processing');
+    showLoading(true);
+    
+    try {
+        console.log(`🔄 Traitement: ${operation}`, params);
+        
+        const response = await fetch('/api/process', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                operation: operation,
+                params: params,
+                image: appState.currentImageData
+            })
+        });
+        
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const data = await response.json();
+        console.log('📥 Résultat:', data);
+        
+        if (data.success) {
+            appState.currentImageData = data.image;
+            
+            // Mettre à jour l'image immédiatement
+            const previewImg = document.getElementById('preview-image');
+            if (previewImg) {
+                previewImg.src = data.image;
+            }
+            
+            // Historique
+            if (appState.historyIndex < appState.history.length - 1) {
+                appState.history = appState.history.slice(0, appState.historyIndex + 1);
+            }
+            appState.history.push(data.image);
+            appState.historyIndex++;
+            
+            setStatus(`✅ ${operation} terminé`);
+        } else {
+            setStatus(`❌ ${data.error}`, 'error');
+        }
+    } catch (error) {
+        console.error('❌ Traitement error:', error);
+        setStatus('❌ Erreur traitement', 'error');
+    } finally {
+        appState.processing = false;
+        showLoading(false);
+    }
 }
 
 function handleNavigation(section) {
-    // Mettre à jour la navigation active
+    // Navigation active
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
     });
     event.currentTarget.classList.add('active');
     
-    // Afficher la section correspondante
-    showSection(section);
-    
-    setStatus(`Section ${section} active`);
-}
-
-function showSection(section) {
-    // Masquer toutes les sections
+    // Afficher section
     document.querySelectorAll('.panel-section').forEach(panel => {
         panel.classList.remove('active');
     });
     
-    // Afficher la section demandée
     const targetSection = document.getElementById(`${section}-section`);
     if (targetSection) {
         targetSection.classList.add('active');
     }
+    
+    setStatus(`📁 ${section}`);
+}
+
+function showSection(section) {
+    handleNavigation({currentTarget: document.querySelector(`[data-section="${section}"]`)});
 }
 
 function applyCustomRotation() {
@@ -167,217 +390,426 @@ function applyCustomRotation() {
     const angle = parseFloat(angleInput.value);
     
     if (isNaN(angle)) {
-        setStatus('Veuillez entrer un angle valide', 'error');
+        setStatus('❌ Angle invalide', 'error');
         return;
     }
     
-    rotateImage(angle);
+    processImage('rotate', { angle: angle });
     angleInput.value = '';
 }
 
-function toggleFilter(filter) {
-    if (!appState.currentImage) return;
+function applyFilter(filter) {
+    if (!appState.currentImageData) {
+        setStatus('❌ Chargez une image d\'abord', 'error');
+        return;
+    }
     
     const card = document.querySelector(`[data-filter="${filter}"]`);
+    const intensity = document.getElementById('filter-intensity-slider').value;
     
-    if (appState.activeFilters.has(filter)) {
-        appState.activeFilters.delete(filter);
-        card.classList.remove('active');
-        setStatus(`Filtre ${filter} désactivé`);
-    } else {
-        appState.activeFilters.add(filter);
+    const wasActive = card.classList.contains('active');
+    
+    // Désactiver tous les filtres
+    document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
+    
+    if (!wasActive) {
         card.classList.add('active');
-        setStatus(`Filtre ${filter} activé`);
+        processImage('blur', { 
+            method: filter,
+            kernel_size: parseInt(intensity) || 5
+        });
+    } else {
+        resetImage();
     }
 }
 
-function rotateImage(degrees) {
-    if (!appState.currentImage) return;
-    
-    setStatus(`Image tournée de ${degrees}°`);
+function applyRotation(angle) {
+    processImage('rotate', { angle: angle });
 }
 
-function flipImage(direction) {
-    if (!appState.currentImage) return;
-    
-    setStatus(`Image miroir ${direction}`);
+function applyFlip(mode) {
+    processImage('flip', { mode: mode });
+}
+
+function applyGrayscale() {
+    processImage('grayscale');
+}
+
+function applyBrightness(value) {
+    processImage('brightness', { value: value });
+}
+
+function applyContrast(value) {
+    processImage('contrast', { value: value });
+}
+
+function applyResize(percentage) {
+    const slider = document.getElementById('resize-slider');
+    const value = parseInt(slider.value);
+    processImage('resize', { width: value, height: value });
+}
+
+function applyThreshold(type, value) {
+    processImage('threshold', { type: type, value: value });
 }
 
 function applyChannelSeparation(channel) {
-    if (!appState.currentImage) return;
-    
-    setStatus(`Canal ${channel} sélectionné`);
+    if (channel === 'all') {
+        resetImage();
+    } else {
+        processImage('channel_split', { channel: channel });
+    }
+}
+
+function applyEdgeDetection(detector) {
+    const low = document.getElementById('low-threshold-slider').value;
+    const high = document.getElementById('high-threshold-slider').value;
+    processImage('edge_detection', { 
+        detector: detector,
+        low: parseInt(low),
+        high: parseInt(high)
+    });
 }
 
 function adjustZoom(delta) {
-    const previewImage = document.getElementById('preview-image');
+    const previewImg = document.getElementById('preview-image');
+    if (!previewImg) return;
+    
     appState.zoomLevel += delta;
     appState.zoomLevel = Math.max(0.1, Math.min(5, appState.zoomLevel));
     
-    previewImage.style.transform = `scale(${appState.zoomLevel})`;
-    setStatus(`Zoom: ${Math.round(appState.zoomLevel * 100)}%`);
+    previewImg.style.transform = `scale(${appState.zoomLevel})`;
+    setStatus(`🔍 Zoom: ${Math.round(appState.zoomLevel * 100)}%`);
 }
 
 function resetZoom() {
-    const previewImage = document.getElementById('preview-image');
+    const previewImg = document.getElementById('preview-image');
+    if (!previewImg) return;
+    
     appState.zoomLevel = 1;
-    previewImage.style.transform = 'scale(1)';
-    setStatus('Zoom réinitialisé');
+    previewImg.style.transform = 'scale(1)';
+    setStatus('🔍 Zoom réinitialisé');
 }
 
 function undoModification() {
-    setStatus('Modification annulée');
+    if (appState.historyIndex > 0) {
+        appState.historyIndex--;
+        appState.currentImageData = appState.history[appState.historyIndex];
+        
+        const previewImg = document.getElementById('preview-image');
+        if (previewImg) {
+            previewImg.src = appState.currentImageData;
+        }
+        
+        setStatus('↩️ Modification annulée');
+    }
 }
 
 function redoModification() {
-    setStatus('Modification rétablie');
+    if (appState.historyIndex < appState.history.length - 1) {
+        appState.historyIndex++;
+        appState.currentImageData = appState.history[appState.historyIndex];
+        
+        const previewImg = document.getElementById('preview-image');
+        if (previewImg) {
+            previewImg.src = appState.currentImageData;
+        }
+        
+        setStatus('↪️ Modification rétablie');
+    }
 }
 
 function resetImage() {
-    if (!appState.originalImage) return;
+    if (!appState.originalImageData) {
+        setStatus('❌ Aucune image', 'error');
+        return;
+    }
     
-    const previewImage = document.getElementById('preview-image');
-    appState.currentImage = appState.originalImage;
-    appState.zoomLevel = 1;
-    appState.activeFilters.clear();
+    appState.currentImageData = appState.originalImageData;
     
-    previewImage.src = appState.originalImage.src;
+    const previewImg = document.getElementById('preview-image');
+    if (previewImg) {
+        previewImg.src = appState.originalImageData;
+    }
+    
+    appState.history = [appState.originalImageData];
+    appState.historyIndex = 0;
+    appState.activeFilters = new Set();
+    
     resetFilterCards();
+    resetSliders();
     resetZoom();
     
-    setStatus('Image réinitialisée');
+    setStatus('🔄 Image réinitialisée');
 }
 
 function toggleCompare() {
-    const previewImage = document.getElementById('preview-image');
+    const previewImg = document.getElementById('preview-image');
     const compareBtn = document.getElementById('compare-btn');
+    
+    if (!previewImg || !compareBtn) return;
     
     appState.isComparing = !appState.isComparing;
     
     if (appState.isComparing) {
-        previewImage.style.opacity = '0.5';
+        previewImg.style.opacity = '0.5';
         compareBtn.classList.add('active');
-        setStatus('Mode comparaison activé');
+        setStatus('👁️ Comparaison activée');
     } else {
-        previewImage.style.opacity = '1';
+        previewImg.style.opacity = '1';
         compareBtn.classList.remove('active');
-        setStatus('Mode comparaison désactivé');
+        setStatus('👁️ Comparaison désactivée');
     }
 }
 
-function saveImage() {
-    if (!appState.currentImage) return;
+async function saveImage() {
+    if (!appState.currentImageData) {
+        setStatus('❌ Aucune image', 'error');
+        return;
+    }
     
-    const previewImage = document.getElementById('preview-image');
-    const link = document.createElement('a');
-    link.download = 'image-modifiee.png';
-    link.href = previewImage.src;
-    link.click();
-    
-    setStatus('Image sauvegardée');
+    try {
+        const response = await fetch('/api/download', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                image: appState.currentImageData,
+                format: 'png'
+            })
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'image_traitee.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            setStatus('💾 Image sauvegardée');
+        } else {
+            setStatus('❌ Erreur sauvegarde', 'error');
+        }
+    } catch (error) {
+        setStatus('❌ Erreur connexion', 'error');
+    }
 }
 
 function resetFilterCards() {
     document.querySelectorAll('.filter-card').forEach(card => {
         card.classList.remove('active');
     });
-    appState.activeFilters.clear();
+}
+
+function resetSliders() {
+    const sliders = [
+        {id: 'brightness-slider', value: 0, suffix: ''},
+        {id: 'contrast-slider', value: 0, suffix: ''},
+        {id: 'grayscale-slider', value: 0, suffix: '%'},
+        {id: 'resize-slider', value: 100, suffix: '%'},
+        {id: 'filter-intensity-slider', value: 3, suffix: ''},
+        {id: 'threshold-slider', value: 128, suffix: ''}
+    ];
+    
+    sliders.forEach(slider => {
+        const element = document.getElementById(slider.id);
+        if (element) {
+            element.value = slider.value;
+            const valueElement = element.parentElement.querySelector('.slider-value');
+            if (valueElement) {
+                valueElement.textContent = slider.value + slider.suffix;
+            }
+        }
+    });
 }
 
 function setStatus(message, type = 'info') {
     const statusText = document.getElementById('status-text');
     const statusDot = document.querySelector('.status-dot');
     
-    statusText.textContent = message;
+    if (statusText) {
+        statusText.textContent = message;
+    }
     
-    if (type === 'processing') {
-        statusDot.classList.add('processing');
-    } else {
-        statusDot.classList.remove('processing');
+    if (statusDot) {
+        if (type === 'error') {
+            statusDot.style.background = '#ef4444';
+            statusDot.classList.remove('processing');
+        } else if (type === 'processing') {
+            statusDot.style.background = '#f59e0b';
+            statusDot.classList.add('processing');
+        } else {
+            statusDot.style.background = '#4ade80';
+            statusDot.classList.remove('processing');
+        }
     }
 }
 
 function updateHistogram() {
     const canvas = document.getElementById('histogram-canvas');
     const container = document.getElementById('histogram-container');
+    
+    if (!canvas || !container) return;
+    
     const ctx = canvas.getContext('2d');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
     
-    // Ajuster la taille du canvas
-    canvas.width = 200;
-    canvas.height = 200;
-    
-    // Effacer le canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Dessiner un fond
-    ctx.fillStyle = 'rgba(15, 14, 35, 0.8)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Dessiner une grille
-    ctx.strokeStyle = 'rgba(168, 192, 255, 0.1)';
-    ctx.lineWidth = 1;
-
-    // Lignes verticales
-    for (let x = 0; x <= canvas.width; x += canvas.width / 4) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, canvas.height);
-      ctx.stroke();
+    if (!appState.currentImageData) {
+        ctx.fillStyle = 'rgba(224, 224, 224, 0.5)';
+        ctx.font = '14px Inter';
+        ctx.textAlign = 'center';
+        ctx.fillText('Aucune image', canvas.width / 2, canvas.height / 2);
+        return;
     }
     
-    // Lignes horizontales
-    for (let y = 0; y <= canvas.height; y += canvas.height / 4) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(canvas.width, y);
-      ctx.stroke();
-    }
-    
-    // Générer des données d'histogramme simulées
+    // Exemple d'histogramme
     const data = [];
     for (let i = 0; i < 256; i++) {
-        // Simulation d'une distribution normale pour un histogramme réaliste
         const x = (i - 128) / 50;
-        const value = Math.exp(-x * x / 2) * canvas.height * 0.8;
-        data.push(value);
+        data.push(Math.exp(-x * x / 2) * canvas.height * 0.8);
     }
     
-    // Dessiner l'histogramme
+    // Dessiner
     const barWidth = canvas.width / 256;
-    ctx.fillStyle = getChannelColor(appState.currentChannel);
+    ctx.fillStyle = '#a8c0ff';
     
     for (let i = 0; i < 256; i++) {
-        const barHeight = data[i];
-        ctx.fillRect(i * barWidth, canvas.height - barHeight, barWidth, barHeight);
-    }
-    
-    // Ajouter des étiquettes
-    ctx.fillStyle = 'rgba(224, 224, 224, 0.7)';
-    ctx.font = '10px Inter';
-    ctx.textAlign = 'center';
-    ctx.fillText('0', 10, canvas.height - 5);
-    ctx.fillText('255', canvas.width - 10, canvas.height - 5);
-    
-    // Titre de l'histogramme
-    ctx.fillStyle = 'rgba(224, 224, 224, 0.9)';
-    ctx.font = '12px Inter';
-    ctx.textAlign = 'center';
-    ctx.fillText(`Histogramme ${appState.currentChannel.toUpperCase()}`, canvas.width / 2, 15);
-}
-
-function getChannelColor(channel) {
-    switch(channel) {
-        case 'red': return '#ff6b6b';
-        case 'green': return '#51cf66';
-        case 'blue': return '#339af0';
-        case 'equalize': return '#a8c0ff';
-        default: return '#a8c0ff';
+        ctx.fillRect(i * barWidth, canvas.height - data[i], barWidth, data[i]);
     }
 }
 
 function setupDragAndDrop() {
     const dropZone = document.querySelector('.image-preview-container');
+    if (!dropZone) return;
     
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(event => {
+        dropZone.addEventListener(event, preventDefaults);
+    });
+    
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
+    ['dragenter', 'dragover'].forEach(event => {
+        dropZone.addEventListener(event, () => {
+            dropZone.style.borderColor = 'var(--accent)';
+        });
+    });
+    
+    ['dragleave', 'drop'].forEach(event => {
+        dropZone.addEventListener(event, () => {
+            dropZone.style.borderColor = 'var(--border)';
+        });
+    });
+    
+    dropZone.addEventListener('drop', function(e) {
+        const files = e.dataTransfer.files;
+        if (files.length > 0 && files[0].type.startsWith('image/')) {
+            handleImageUpload({target: {files: files}});
+        }
+    });
+}
+// Ajouter ces fonctions après les autres fonctions de traitement
+
+function applyThreshold(type) {
+    if (!appState.currentImageData) return;
+    
+    const slider = document.getElementById('threshold-slider');
+    const value = parseInt(slider.value);
+    
+    if (type === 'adaptive') {
+        processImage('threshold', { type: 'adaptive' });
+    } else if (type === 'otsu') {
+        processImage('threshold', { type: 'binary', value: 0 }); // Otsu sera géré côté serveur
+    } else {
+        processImage('threshold', { type: 'binary', value: value });
+    }
+    
+    // Mettre à jour l'état des boutons
+    document.querySelectorAll('.threshold-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.currentTarget.classList.add('active');
+}
+
+function applyChannelSeparation(channel) {
+    if (!appState.currentImageData) return;
+    
+    processImage('channel_split', { channel: channel });
+}
+
+function applyEdgeDetection(detector) {
+    if (!appState.currentImageData) return;
+    
+    const low = document.getElementById('low-threshold-slider').value;
+    const high = document.getElementById('high-threshold-slider').value;
+    
+    processImage('edge_detection', { 
+        detector: detector,
+        low: parseInt(low),
+        high: parseInt(high)
+    });
+    
+    // Mettre à jour l'état des boutons
+    document.querySelectorAll('.detection-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.currentTarget.classList.add('active');
+}
+
+async function exportImage(format) {
+    if (!appState.currentImageData) {
+        setStatus('❌ Aucune image', 'error');
+        return;
+    }
+    
+    try {
+        const quality = document.getElementById('quality-slider').value;
+        
+        const response = await fetch('/api/download', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                image: appState.currentImageData,
+                format: format,
+                quality: parseInt(quality)
+            })
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `image_traitee.${format}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            setStatus(`💾 Image exportée en ${format.toUpperCase()}`);
+        } else {
+            setStatus('❌ Erreur exportation', 'error');
+        }
+    } catch (error) {
+        console.error('Erreur export:', error);
+        setStatus('❌ Erreur connexion', 'error');
+    }
+}
+
+// Ajouter une fonction pour gérer le glisser-déposer
+function setupDragAndDrop() {
+    const dropZone = document.querySelector('.image-preview-container');
+    if (!dropZone) return;
+    
+    // Prévenir le comportement par défaut
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropZone.addEventListener(eventName, preventDefaults, false);
     });
@@ -387,6 +819,7 @@ function setupDragAndDrop() {
         e.stopPropagation();
     }
     
+    // Effets visuels
     ['dragenter', 'dragover'].forEach(eventName => {
         dropZone.addEventListener(eventName, highlight, false);
     });
@@ -397,31 +830,34 @@ function setupDragAndDrop() {
     
     function highlight() {
         dropZone.style.borderColor = 'var(--accent)';
-        dropZone.style.boxShadow = '0 0 20px rgba(168, 192, 255, 0.4)';
+        dropZone.style.backgroundColor = 'rgba(168, 192, 255, 0.1)';
     }
     
     function unhighlight() {
         dropZone.style.borderColor = 'var(--border)';
-        dropZone.style.boxShadow = 'var(--shadow)';
+        dropZone.style.backgroundColor = '';
     }
     
+    // Gérer le drop
     dropZone.addEventListener('drop', handleDrop, false);
     
     function handleDrop(e) {
         const dt = e.dataTransfer;
         const files = dt.files;
         
-        if (files.length) {
-            handleFiles(files);
-        }
-    }
-    
-    function handleFiles(files) {
-        const file = files[0];
-        if (file.type.startsWith('image/')) {
-            loadImage(file);
-        } else {
-            setStatus('Veuillez sélectionner un fichier image valide.', 'error');
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.type.startsWith('image/')) {
+                // Créer un faux événement pour utiliser la fonction existante
+                const event = {
+                    target: {
+                        files: files
+                    }
+                };
+                handleImageUpload(event);
+            } else {
+                setStatus('❌ Veuillez déposer une image', 'error');
+            }
         }
     }
 }
