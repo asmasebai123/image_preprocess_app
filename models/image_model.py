@@ -215,3 +215,9 @@ def mean_based_threshold(image_gray):
     _, binary = cv2.threshold(image_gray, mean_value, 255, cv2.THRESH_BINARY)
     return binary
 
+def otsu_threshold(image_gray):
+    """
+    Applique un seuillage avec la méthode d'Otsu.
+    """
+    _, binary = cv2.threshold(image_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    return binary

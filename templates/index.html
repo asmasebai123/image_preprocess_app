@@ -9,7 +9,170 @@
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-    <!-- Loading Overlay - DOIT ÊTRE EN DEHORS du app-container -->
+    <!-- Modale pour l'histogramme plein écran - HORS DU LAYOUT PRINCIPAL -->
+    <div class="histogram-modal" id="histogram-modal" style="display: none;">
+        <div class="modal-overlay"></div>
+        <div class="modal-container">
+            <div class="modal-header">
+                <h2>
+                    <i class="fas fa-chart-bar"></i>
+                    Histogramme détaillé
+                </h2>
+                <button class="modal-close" id="modal-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="modal-content">
+                <div class="modal-controls">
+                    <div class="modal-channel-selector">
+                        <button class="channel-btn active" data-channel="rgb">
+                            <i class="fas fa-palette"></i> Tous les canaux
+                        </button>
+                        <button class="channel-btn" data-channel="red">
+                            <i class="fas fa-circle" style="color: #ff4444;"></i> Rouge
+                        </button>
+                        <button class="channel-btn" data-channel="green">
+                            <i class="fas fa-circle" style="color: #44ff44;"></i> Vert
+                        </button>
+                        <button class="channel-btn" data-channel="blue">
+                            <i class="fas fa-circle" style="color: #4444ff;"></i> Bleu
+                        </button>
+                        <button class="channel-btn" data-channel="gray">
+                            <i class="fas fa-circle" style="color: #cccccc;"></i> Niveaux de gris
+                        </button>
+                        <button class="channel-btn" id="modal-equalize-btn">
+                            <i class="fas fa-chart-line"></i> Égaliser
+                        </button>
+                    </div>
+                    
+                    <div class="modal-zoom-controls">
+                        <button class="zoom-btn" id="modal-zoom-in">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button class="zoom-btn" id="modal-zoom-out">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button class="zoom-btn" id="modal-zoom-reset">
+                            <i class="fas fa-expand-arrows-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="modal-histogram-container">
+                    <canvas id="modal-histogram-canvas"></canvas>
+                </div>
+                
+                <div class="modal-statistics">
+                    <div class="stat-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-image"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Pixels totaux</span>
+                                <span class="stat-value" id="modal-total-pixels">0</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-calculator"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Moyenne</span>
+                                <span class="stat-value" id="modal-mean-value">0</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Écart-type</span>
+                                <span class="stat-value" id="modal-std-value">0</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-arrows-alt-h"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Dynamique</span>
+                                <span class="stat-value" id="modal-dynamic-range">0-255</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-filter"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Entropie</span>
+                                <span class="stat-value" id="modal-entropy">0</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-balance-scale"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-label">Contraste</span>
+                                <span class="stat-value" id="modal-contrast">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="histogram-details">
+                        <h3><i class="fas fa-info-circle"></i> Informations détaillées</h3>
+                        <div class="details-grid">
+                            <div class="detail-item">
+                                <span class="detail-label">Canal actif:</span>
+                                <span class="detail-value" id="modal-active-channel">RGB</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Image:</span>
+                                <span class="detail-value" id="modal-image-info">-</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Niveau min:</span>
+                                <span class="detail-value" id="modal-min-level">0</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Niveau max:</span>
+                                <span class="detail-value" id="modal-max-level">255</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Médiane:</span>
+                                <span class="detail-value" id="modal-median">0</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="detail-label">Mode:</span>
+                                <span class="detail-value" id="modal-mode">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button class="action-btn" id="modal-save-btn">
+                        <i class="fas fa-download"></i> Sauvegarder l'histogramme
+                    </button>
+                    <button class="action-btn secondary" id="modal-print-btn">
+                        <i class="fas fa-print"></i> Imprimer
+                    </button>
+                    <button class="action-btn secondary" id="modal-reset-btn">
+                        <i class="fas fa-redo"></i> Réinitialiser la vue
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay - HORS DU LAYOUT PRINCIPAL -->
     <div class="loading-overlay" id="loading-overlay" style="display: none;">
         <div class="loading-spinner">
             <i class="fas fa-spinner fa-spin"></i>
@@ -17,6 +180,7 @@
         </div>
     </div>
 
+    <!-- LAYOUT PRINCIPAL SEULEMENT ICI -->
     <div class="app-container">
         <!-- Header -->
         <header>
@@ -292,20 +456,76 @@
             <!-- Section de l'histogramme -->
             <div class="panel-section" id="histogram-section">
                 <h3 class="section-title">
-                    <i class="fas fa-chart-bar section-icon"></i> Histogramme
+                    <i class="fas fa-chart-bar section-icon"></i> Histogramme des Intensités
                 </h3>
+                
                 <div class="histogram-controls">
-                    <button class="histogram-btn active" data-channel="rgb">RGB</button>
-                    <button class="histogram-btn" data-channel="red">Rouge</button>
-                    <button class="histogram-btn" data-channel="green">Vert</button>
-                    <button class="histogram-btn" data-channel="blue">Bleu</button>
-                    <button class="histogram-btn" data-channel="equalize">Égaliser</button>
+                    <button class="histogram-btn active" data-channel="rgb">
+                        <i class="fas fa-palette"></i> Tous
+                    </button>
+                    <button class="histogram-btn" data-channel="red">
+                        <i class="fas fa-circle" style="color: #ff4444;"></i> Rouge
+                    </button>
+                    <button class="histogram-btn" data-channel="green">
+                        <i class="fas fa-circle" style="color: #44ff44;"></i> Vert
+                    </button>
+                    <button class="histogram-btn" data-channel="blue">
+                        <i class="fas fa-circle" style="color: #4444ff;"></i> Bleu
+                    </button>
+                    <button class="histogram-btn" data-channel="gray">
+                        <i class="fas fa-circle" style="color: #cccccc;"></i> Niveaux de gris
+                    </button>
+                    <button class="histogram-btn" data-channel="equalize">
+                        <i class="fas fa-chart-line"></i> Égaliser
+                    </button>
                 </div>
+                
                 <div class="histogram-canvas-container" id="histogram-container">
                     <canvas id="histogram-canvas"></canvas>
-                    <div class="histogram-overlay">
-                        <span>Survolez pour agrandir</span>
+                    <div class="histogram-overlay" id="histogram-overlay">
+                        <i class="fas fa-expand-alt"></i>
+                        <span>Cliquez pour agrandir l'histogramme</span>
                     </div>
+                </div>
+                
+                <!-- Légende -->
+                <div class="histogram-legend">
+                    <div class="legend-item">
+                        <div class="legend-color red"></div>
+                        <span>Canal Rouge</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color green"></div>
+                        <span>Canal Vert</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color blue"></div>
+                        <span>Canal Bleu</span>
+                    </div>
+                </div>
+                
+                <!-- Statistiques -->
+                <div class="histogram-stats" id="histogram-stats">
+                    <div class="stat-item">
+                        <span>Pixels:</span>
+                        <span class="stat-value" id="pixel-count">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Moyenne:</span>
+                        <span class="stat-value" id="mean-value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Écart-type:</span>
+                        <span class="stat-value" id="std-value">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span>Dynamique:</span>
+                        <span class="stat-value" id="dynamic-range">0-255</span>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 15px; font-size: 12px; color: var(--accent); text-align: center;">
+                    <i class="fas fa-lightbulb"></i> L'histogramme montre la distribution des intensités de pixels dans l'image
                 </div>
             </div>
 
