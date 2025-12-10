@@ -351,41 +351,30 @@ function setupHistogramEvents() {
 function setupHistogramModal() {
     const histogramContainer = document.getElementById('histogram-container');
     const histogramOverlay = document.getElementById('histogram-overlay');
+    const histogramCanvas = document.getElementById('histogram-canvas');
     const modal = document.getElementById('histogram-modal');
     const modalClose = document.getElementById('modal-close');
-    const histogramCanvas = document.getElementById('histogram-canvas');
     
     // Ouvrir la modale au clic sur l'histogramme ou son overlay
+    const openModal = function(e) {
+        e.stopPropagation();
+        if (!appState.currentImageData) {
+            setStatus('❌ Aucune image à analyser', 'error');
+            return;
+        }
+        openHistogramModal();
+    };
+    
     if (histogramContainer) {
-        histogramContainer.addEventListener('click', function(e) {
-            if (!appState.currentImageData) {
-                setStatus('❌ Aucune image à analyser', 'error');
-                return;
-            }
-            openHistogramModal();
-        });
+        histogramContainer.addEventListener('click', openModal);
     }
     
     if (histogramOverlay) {
-        histogramOverlay.addEventListener('click', function(e) {
-            e.stopPropagation();
-            if (!appState.currentImageData) {
-                setStatus('❌ Aucune image à analyser', 'error');
-                return;
-            }
-            openHistogramModal();
-        });
+        histogramOverlay.addEventListener('click', openModal);
     }
     
     if (histogramCanvas) {
-        histogramCanvas.addEventListener('click', function(e) {
-            e.stopPropagation();
-            if (!appState.currentImageData) {
-                setStatus('❌ Aucune image à analyser', 'error');
-                return;
-            }
-            openHistogramModal();
-        });
+        histogramCanvas.addEventListener('click', openModal);
     }
     
     // Fermer la modale
@@ -1224,24 +1213,68 @@ function drawEmptyHistogram() {
 
 function openHistogramModal() {
     const modal = document.getElementById('histogram-modal');
-    if (!modal) return;
+    const histogramContainer = document.querySelector('.histogram-canvas-container');
+    
+    if (!modal || !histogramContainer) return;
+    
+    if (!appState.currentImageData) {
+        setStatus('❌ Aucune image à analyser', 'error');
+        return;
+    }
+    
+    console.log('📊 Ouverture du modal histogramme');
     
     // Empêcher le défilement du body
     document.body.classList.add('modal-open');
     
-    // Afficher la modale
-    modal.classList.add('active');
+    // Afficher la modale immédiatement
+    modal.style.display = 'flex';
     
-    // Réinitialiser le zoom modal
-    modalZoomLevel = 1;
+    // Forcer un reflow pour que le modal soit visible
+    modal.offsetHeight;
     
-    // Mettre à jour l'histogramme modal
-    updateModalHistogram(modalActiveChannel);
-    
-    // Mettre à jour les informations de l'image
-    updateModalImageInfo();
+    // Ajouter la classe active pour l'animation
+    setTimeout(() => {
+        modal.classList.add('active');
+        
+        // Mettre à jour l'histogramme après un petit délai pour que le modal soit visible
+        setTimeout(() => {
+            // Réinitialiser le zoom modal
+            modalZoomLevel = 1;
+            
+            // Mettre à jour l'histogramme modal
+            updateModalHistogram(modalActiveChannel);
+            
+            // Mettre à jour les informations de l'image
+            updateModalImageInfo();
+            
+            // Réactiver le bouton RGB par défaut
+            const rgbBtn = document.querySelector('.modal-channel-selector .channel-btn[data-channel="rgb"]');
+            if (rgbBtn) {
+                document.querySelectorAll('.modal-channel-selector .channel-btn').forEach(b => {
+                    b.classList.remove('active');
+                });
+                rgbBtn.classList.add('active');
+                modalActiveChannel = 'rgb';
+                document.getElementById('modal-active-channel').textContent = 'RGB';
+            }
+        }, 100);
+    }, 10);
     
     setStatus('📊 Affichage de l\'histogramme détaillé');
+}
+
+function closeHistogramModal() {
+    const modal = document.getElementById('histogram-modal');
+    if (!modal) return;
+    
+    modal.classList.remove('active');
+    
+    setTimeout(() => {
+        modal.style.display = 'none';
+        document.body.classList.remove('modal-open');
+        setStatus('✅ Retour à l\'interface principale');
+    }, 300); // Correspond à la durée de l'animation
 }
 
 function closeHistogramModal() {
@@ -1295,7 +1328,7 @@ async function updateModalHistogram(channel = 'rgb') {
 }
 
 function drawModalHistogram(histogramData, channel, stats = null, imageInfo = null) {
-    const canvas = document.getElementById('modal-histogram-canvas');
+      const canvas = document.getElementById('modal-histogram-canvas');
     const container = document.querySelector('.modal-histogram-container');
     
     if (!canvas || !container) return;
@@ -1303,6 +1336,18 @@ function drawModalHistogram(histogramData, channel, stats = null, imageInfo = nu
     const ctx = canvas.getContext('2d');
     const dpr = window.devicePixelRatio || 1;
     const rect = container.getBoundingClientRect();
+    
+    // Vérifier si le container a des dimensions valides
+    if (rect.width <= 0 || rect.height <= 0) {
+        console.warn('Container modal sans dimensions, report du dessin...');
+        // Réessayer après un court délai
+        setTimeout(() => {
+            if (appState.currentImageData) {
+                updateModalHistogram(modalActiveChannel);
+            }
+        }, 100);
+        return;
+    }
     
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;

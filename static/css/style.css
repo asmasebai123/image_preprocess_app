@@ -47,6 +47,29 @@ body.modal-open {
     height: 100vh;
     gap: 0;
 }
+/* Dans style.css, ajoutez ceci dans la section du modal */
+.histogram-modal {
+    /* Gardez toutes les propriétés existantes */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 999999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.modal-container {
+    /* Assurez-vous que le conteneur a une taille minimale */
+    min-width: 300px;
+    min-height: 200px;
+    /* ... autres propriétés ... */
+}
 
 /* Header */
 header {
