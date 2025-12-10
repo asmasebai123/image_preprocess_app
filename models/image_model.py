@@ -107,14 +107,50 @@ def crop_image(image, x1, y1, x2, y2):
     return image[y1:y2, x1:x2]
 
 def rotate_image(image, angle):
-
+    # Obtenir les dimensions de l'image
     (h, w) = image.shape[:2]
+    
+    # Calculer le centre de l'image
     center = (w // 2, h // 2)
-
-    matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
-    rotated = cv2.warpAffine(image, matrix, (w, h))
-
+    
+    # Obtenir la matrice de rotation
+    rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+    
+    # Calculer les nouvelles dimensions pour contenir l'image entière
+    # Calculer le cosinus et sinus de l'angle
+    cos_angle = abs(rotation_matrix[0, 0])
+    sin_angle = abs(rotation_matrix[0, 1])
+    
+    # Calculer les nouvelles dimensions
+    new_w = int((h * sin_angle) + (w * cos_angle))
+    new_h = int((h * cos_angle) + (w * sin_angle))
+    
+    # Ajuster la matrice de rotation pour le décalage
+    rotation_matrix[0, 2] += (new_w / 2) - center[0]
+    rotation_matrix[1, 2] += (new_h / 2) - center[1]
+    
+    # Effectuer la rotation avec les nouvelles dimensions
+    rotated = cv2.warpAffine(image, rotation_matrix, (new_w, new_h), 
+                            flags=cv2.INTER_LINEAR, 
+                            borderMode=cv2.BORDER_CONSTANT, 
+                            borderValue=(0, 0, 0))
+    
     return rotated
+
+
+def rotate_left(image):
+    """
+    Fait une rotation de 90 degrés vers la gauche (anti-horaire).
+    Note: Pour les rotations de 90°, nous pouvons utiliser une méthode plus simple
+    """
+    return cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
+
+def rotate_right(image):
+    """
+    Fait une rotation de 90 degrés vers la droite (horaire).
+    """
+    return cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
 
 def rotate_left(image):
     """
